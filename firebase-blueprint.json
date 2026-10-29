@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "EOfficeRecord": {
+      "title": "EOfficeRecord",
+      "description": "บันทึกหนังสือในระบบ E-Office ฝ่ายบริหารงานทั่วไป",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "type": { "type": "string", "enum": ["in", "out"], "maxLength": 16 },
+        "quantity": { "type": "number" },
+        "docNumber": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 512 },
+        "department": { "type": "string", "maxLength": 256 },
+        "note": { "type": "string", "maxLength": 1024 },
+        "status": { "type": "string", "enum": ["completed", "urgent", "in_progress"], "maxLength": 32 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "date", "type", "title"]
+    },
+    "FinancialFundRecord": {
+      "title": "FinancialFundRecord",
+      "description": "บันทึกการรับและจ่ายเงินกองทุน ช.ค.บ. และ ก.บ.ท.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "source": { "type": "string", "maxLength": 512 },
+        "receivedAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "netBalance": { "type": "number" },
+        "beneficiaryCount": { "type": "number" },
+        "note": { "type": "string", "maxLength": 1024 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "date", "source", "receivedAmount", "paidAmount"]
+    },
+    "PensionerRecord": {
+      "title": "PensionerRecord",
+      "description": "ทะเบียนประวัติข้าราชการบำนาญและสิทธิประโยชน์",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 32 },
+        "firstName": { "type": "string", "maxLength": 128 },
+        "lastName": { "type": "string", "maxLength": 128 },
+        "idCard": { "type": "string", "maxLength": 32 },
+        "formerPosition": { "type": "string", "maxLength": 256 },
+        "birthDate": { "type": "string", "maxLength": 32 },
+        "age": { "type": "number" },
+        "ageGroup": { "type": "string", "maxLength": 32 },
+        "isAlive": { "type": "boolean" },
+        "deathDate": { "type": "string", "maxLength": 32 },
+        "isVerified": { "type": "boolean" },
+        "verifiedDate": { "type": "string", "maxLength": 32 },
+        "verificationChannel": { "type": "string", "maxLength": 64 },
+        "regularPension": { "type": "number" },
+        "livingGratuityInstallment1": { "type": "number" },
+        "livingGratuityInstallment2": { "type": "number" },
+        "livingGratuityInstallment3": { "type": "number" },
+        "livingGratuity": { "type": "number" },
+        "livingGratuityStatus": { "type": "string", "maxLength": 32 },
+        "bonus25Total": { "type": "number" },
+        "bonus25Budget": { "type": "number" },
+        "bonus25Deposit": { "type": "number" },
+        "chkbAmount": { "type": "number" },
+        "heirName": { "type": "string", "maxLength": 256 },
+        "heirRelation": { "type": "string", "maxLength": 64 },
+        "heirPercentage": { "type": "number" },
+        "heirPhone": { "type": "string", "maxLength": 32 },
+        "special3xHeirName": { "type": "string", "maxLength": 256 },
+        "special3xAmount": { "type": "number" },
+        "special3xRelation": { "type": "string", "maxLength": 64 },
+        "special3xPhone": { "type": "string", "maxLength": 32 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "firstName", "lastName", "idCard"]
+    },
+    "GratuityRecipientRecord": {
+      "title": "GratuityRecipientRecord",
+      "description": "ทะเบียนผู้รับบำเหน็จและระบบคำนวณเงิน",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 32 },
+        "firstName": { "type": "string", "maxLength": 128 },
+        "lastName": { "type": "string", "maxLength": 128 },
+        "idCard": { "type": "string", "maxLength": 32 },
+        "formerPosition": { "type": "string", "maxLength": 256 },
+        "department": { "type": "string", "maxLength": 256 },
+        "lastSalary": { "type": "number" },
+        "serviceYears": { "type": "number" },
+        "serviceMonths": { "type": "number" },
+        "gratuityAmount": { "type": "number" },
+        "isAlive": { "type": "boolean" },
+        "deathDate": { "type": "string", "maxLength": 32 },
+        "isVerified": { "type": "boolean" },
+        "verifiedDate": { "type": "string", "maxLength": 32 },
+        "verificationChannel": { "type": "string", "maxLength": 64 },
+        "heirName": { "type": "string", "maxLength": 256 },
+        "heirRelation": { "type": "string", "maxLength": 64 },
+        "heirPercentage": { "type": "number" },
+        "heirPhone": { "type": "string", "maxLength": 32 },
+        "paymentDate": { "type": "string", "maxLength": 32 },
+        "note": { "type": "string", "maxLength": 1024 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "firstName", "lastName", "idCard"]
+    },
+    "SystemMetadata": {
+      "title": "SystemMetadata",
+      "description": "ข้อมูลระบบและเวอร์ชันการอัปเดต",
+      "type": "object",
+      "properties": {
+        "version": { "type": "number" },
+        "lastUpdated": { "type": "string", "maxLength": 64 },
+        "lastUpdatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["version"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "รายชื่อผู้ดูแลระบบ",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/eoffice/{recordId}": {
+      "schema": { "$ref": "#/entities/EOfficeRecord" },
+      "description": "หนังสือราชการ E-Office"
+    },
+    "/chkb/{recordId}": {
+      "schema": { "$ref": "#/entities/FinancialFundRecord" },
+      "description": "รายการเงิน ช.ค.บ."
+    },
+    "/gbt/{recordId}": {
+      "schema": { "$ref": "#/entities/FinancialFundRecord" },
+      "description": "รายการเงิน ก.บ.ท."
+    },
+    "/pensioners/{recordId}": {
+      "schema": { "$ref": "#/entities/PensionerRecord" },
+      "description": "ข้อมูลข้าราชการบำนาญ"
+    },
+    "/gratuity/{recordId}": {
+      "schema": { "$ref": "#/entities/GratuityRecipientRecord" },
+      "description": "ข้อมูลผู้รับบำเหน็จ"
+    },
+    "/system/{metaId}": {
+      "schema": { "$ref": "#/entities/SystemMetadata" },
+      "description": "ข้อมูลระบบส่วนกลาง"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "ผู้ดูแลระบบ"
+    }
+  }
+}

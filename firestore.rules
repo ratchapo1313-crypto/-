@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /eoffice/{id} {
+      allow read, write: if true;
+    }
+
+    match /chkb/{id} {
+      allow read, write: if true;
+    }
+
+    match /gbt/{id} {
+      allow read, write: if true;
+    }
+
+    match /pensioners/{id} {
+      allow read, write: if true;
+    }
+
+    match /gratuity/{id} {
+      allow read, write: if true;
+    }
+
+    match /articles/{id} {
+      allow read, write: if true;
+    }
+
+    match /system/{id} {
+      allow read, write: if true;
+    }
+  }
+}
