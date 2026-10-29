@@ -11,7 +11,6 @@ import {
   X,
   Lock,
   Banknote,
-  BookOpen,
 } from 'lucide-react';
 import { UserSession } from '../types';
 
@@ -23,7 +22,6 @@ export type ActiveTab =
   | 'pensioners'
   | 'gratuity-report'
   | 'special-pensioners'
-  | 'research'
   | 'excel'
   | 'memo';
 
@@ -79,12 +77,6 @@ export function Sidebar({
       label: 'จำแนกประเภทและเกณฑ์อายุ',
       icon: Award,
       badge: 'พิเศษ',
-    },
-    {
-      id: 'research',
-      label: 'ค้นคว้าวิจัย & บทความการคลัง',
-      icon: BookOpen,
-      badge: 'อัปเดต',
     },
     {
       id: 'excel',

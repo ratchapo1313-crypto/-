@@ -138,7 +138,6 @@ export function GbtView({
           <div className="text-xl font-bold text-blue-950">
             {formatCurrency(totalReceived)}
           </div>
-          <div className="text-[11px] text-blue-600 mt-1">จัดสรรจาก ก.บ.ท. และเงินสะสม</div>
         </div>
 
         {/* Total Paid */}
@@ -152,7 +151,6 @@ export function GbtView({
           <div className="text-xl font-bold text-rose-950">
             {formatCurrency(totalPaid)}
           </div>
-          <div className="text-[11px] text-rose-600 mt-1">จ่ายบำเหน็จดำรงชีพและสิทธิ</div>
         </div>
 
         {/* Net Balance (Calculated automatically) */}
@@ -166,7 +164,6 @@ export function GbtView({
           <div className="text-xl font-bold text-indigo-950">
             {formatCurrency(netBalance)}
           </div>
-          <div className="text-[11px] text-indigo-600 mt-1">รับลบจ่าย สุทธิคงคลัง</div>
         </div>
 
         {/* Beneficiaries Count */}
@@ -439,7 +436,7 @@ function GbtRecordModal({ record, onClose, onSave }: GbtRecordModalProps) {
               type="text"
               value={formData.source}
               onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-              placeholder="เช่น สำนักงาน ก.บ.ท. ส่วนกลาง, จ่ายเงินบำเหน็จดำรงชีพอายุครบ 65 ปี"
+              placeholder="เช่น สำนักงาน ก.บ.ท. ส่วนกลาง, รายการเงินจัดสรร ก.บ.ท."
               className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none"
               required
             />

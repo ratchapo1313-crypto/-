@@ -10,10 +10,8 @@ import {
   ArrowUpRight,
   Shield,
   Calendar,
-  BookOpen,
-  Sparkles,
 } from 'lucide-react';
-import { EOfficeRecord, FinancialFundRecord, PensionerRecord, ArticleRecord, UserSession } from '../types';
+import { EOfficeRecord, FinancialFundRecord, PensionerRecord, UserSession } from '../types';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 
 interface DashboardViewProps {
@@ -22,7 +20,6 @@ interface DashboardViewProps {
   chkbData: FinancialFundRecord[];
   gbtData: FinancialFundRecord[];
   pensionersData: PensionerRecord[];
-  articlesData?: ArticleRecord[];
   onNavigateTab: (tab: any) => void;
 }
 

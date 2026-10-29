@@ -10,7 +10,6 @@ import { GbtView } from './views/GbtView';
 import { PensionersView } from './views/PensionersView';
 import { GratuityReportView } from './views/GratuityReportView';
 import { SpecialPensionersReportView } from './views/SpecialPensionersReportView';
-import { ResearchArticlesView } from './views/ResearchArticlesView';
 import { ExcelCenterView } from './views/ExcelCenterView';
 import { OfficialMemoView } from './views/OfficialMemoView';
 import {
@@ -634,20 +633,6 @@ export default function App() {
     } catch {}
   };
 
-  // Articles & Research CRUD
-  const handleAddArticle = (item: ArticleRecord) => {
-    setArticlesData((prev) => [item, ...prev]);
-    syncItemToServer('add', 'articles', item);
-  };
-  const handleUpdateArticle = (item: ArticleRecord) => {
-    setArticlesData((prev) => prev.map((a) => (a.id === item.id ? item : a)));
-    syncItemToServer('update', 'articles', item);
-  };
-  const handleDeleteArticle = (id: string) => {
-    setArticlesData((prev) => prev.filter((a) => a.id !== id));
-    syncItemToServer('delete', 'articles', id);
-  };
-
   // E-Office CRUD
   const handleAddEOffice = (item: EOfficeRecord) => {
     const stamped = {
@@ -982,16 +967,6 @@ export default function App() {
                   onAddPensioner={handleAddPensioner}
                   onUpdatePensioner={handleUpdatePensioner}
                   onDeletePensioner={handleDeletePensioner}
-                />
-              )}
-
-              {activeTab === 'research' && (
-                <ResearchArticlesView
-                  currentSession={currentSession}
-                  articles={articlesData}
-                  onAddArticle={handleAddArticle}
-                  onUpdateArticle={handleUpdateArticle}
-                  onDeleteArticle={handleDeleteArticle}
                 />
               )}
 
