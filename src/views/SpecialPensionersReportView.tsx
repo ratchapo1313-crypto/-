@@ -391,6 +391,12 @@ export function SpecialPensionersReportView({
       bonus25Budget: bBudget,
       bonus25Deposit: bDeposit,
       chkbAmount: Number(formData.chkbAmount) || 0,
+      special3xHeirName: formData.special3xHeirName?.trim() || undefined,
+      special3xAmount: formData.special3xAmount !== undefined ? Number(formData.special3xAmount) : undefined,
+      special3xRelation: formData.special3xRelation?.trim() || undefined,
+      special3xPhone: formData.special3xPhone?.trim() || undefined,
+      recordedBy: editingItem?.recordedBy || currentSession.username,
+      updatedAt: new Date().toISOString(),
     };
 
     if (editingItem) {

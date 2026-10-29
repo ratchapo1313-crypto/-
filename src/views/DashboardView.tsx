@@ -10,8 +10,9 @@ import {
   ArrowUpRight,
   Shield,
   Calendar,
+  Banknote,
 } from 'lucide-react';
-import { EOfficeRecord, FinancialFundRecord, PensionerRecord, UserSession } from '../types';
+import { EOfficeRecord, FinancialFundRecord, PensionerRecord, GratuityRecipientRecord, UserSession } from '../types';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 
 interface DashboardViewProps {
@@ -20,6 +21,7 @@ interface DashboardViewProps {
   chkbData: FinancialFundRecord[];
   gbtData: FinancialFundRecord[];
   pensionersData: PensionerRecord[];
+  gratuityData?: GratuityRecipientRecord[];
   onNavigateTab: (tab: any) => void;
 }
 
@@ -29,6 +31,7 @@ export function DashboardView({
   chkbData,
   gbtData,
   pensionersData,
+  gratuityData = [],
   onNavigateTab,
 }: DashboardViewProps) {
   // E-Office stats (เฉพาะการรับหนังสือ และการส่งหนังสือออก พร้อมจำนวนตัวเลขที่บวกเพิ่ม)
@@ -71,6 +74,11 @@ export function DashboardView({
   const age60Count = livingPensioners.filter(p => p.age === 60 || p.ageGroup === '60').length;
   const age65Count = livingPensioners.filter(p => p.age === 65 || p.ageGroup === '65').length;
   const age70Count = livingPensioners.filter(p => p.age === 70 || p.ageGroup === '70').length;
+
+  // Gratuity recipients stats
+  const gratuityTotalCount = gratuityData.length;
+  const gratuityTotalAmount = gratuityData.reduce((s, r) => s + (r.gratuityAmount || 0), 0);
+  const gratuityVerifiedCount = gratuityData.filter(r => r.isVerified).length;
 
   return (
     <div className="space-y-6">
@@ -348,6 +356,65 @@ export function DashboardView({
             >
               ยืนยันตัวตนด่วน
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* รายงานผู้รับบำเหน็จ & ระบบคำนวณเงิน (ปีงบประมาณ 2570) */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shadow-xs">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                รายงานผู้รับบำเหน็จ & ระบบคำนวณเงิน (ปีงบประมาณ 2570)
+                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                  คำนวณเงินอัตโนมัติ
+                </span>
+              </h4>
+              <p className="text-xs text-slate-500">
+                คำนวณยอดเงินบำเหน็จ (เงินเดือนสุดท้าย × อายุราชการ) พร้อมข้อมูลทายาทและการยืนยันตัวตน
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigateTab('gratuity-report')}
+            className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+          >
+            เปิดระบบคำนวณเงิน & รายงานผู้รับบำเหน็จ <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="text-xs text-slate-500 font-medium">จำนวนผู้รับบำเหน็จทั้งหมด</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">
+              {formatNumber(gratuityTotalCount)} <span className="text-xs font-normal text-slate-500">ราย</span>
+            </div>
+            <div className="text-[11px] text-slate-500 mt-1">เทศบาลเมืองมหาสารคาม</div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200">
+            <div className="text-xs text-amber-800 font-medium">ยอดเงินบำเหน็จคำนวณรวม</div>
+            <div className="text-2xl font-bold text-amber-950 mt-1">
+              {formatCurrency(gratuityTotalAmount)} <span className="text-xs font-normal text-amber-800">฿</span>
+            </div>
+            <div className="text-[11px] text-amber-700 mt-1">ตามสูตร เงินเดือนสุดท้าย × อายุราชการ</div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200">
+            <div className="text-xs text-emerald-800 font-medium">สถานะการยืนยันตัวตน</div>
+            <div className="text-2xl font-bold text-emerald-950 mt-1">
+              {formatNumber(gratuityVerifiedCount)}{' '}
+              <span className="text-xs font-normal text-emerald-700">/ {formatNumber(gratuityTotalCount)} ราย</span>
+            </div>
+            <div className="text-[11px] text-emerald-700 mt-1">
+              {gratuityTotalCount > 0
+                ? `${((gratuityVerifiedCount / gratuityTotalCount) * 100).toFixed(1)}% ยืนยันตัวตนแล้ว`
+                : 'พร้อมบันทึกรายการ'}
+            </div>
           </div>
         </div>
       </div>

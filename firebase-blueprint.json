@@ -71,6 +71,7 @@
         "heirRelation": { "type": "string", "maxLength": 64 },
         "heirPercentage": { "type": "number" },
         "heirPhone": { "type": "string", "maxLength": 32 },
+        "heirs": { "type": "array", "description": "รายชื่อทายาทผู้มีสิทธิขอรับบำเหน็จตกทอด" },
         "special3xHeirName": { "type": "string", "maxLength": 256 },
         "special3xAmount": { "type": "number" },
         "special3xRelation": { "type": "string", "maxLength": 64 },

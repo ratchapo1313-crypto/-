@@ -28,7 +28,17 @@ import {
   ArticleRecord,
   UserSession,
 } from './types';
-import { db, doc, setDoc, deleteDoc, collection, onSnapshot, pullLatestFromFirestore } from './firebase';
+import {
+  db,
+  doc,
+  collection,
+  onSnapshot,
+  pullLatestFromFirestore,
+  syncItemToFirestore,
+  syncCollectionToFirestore,
+  handleFirestoreError,
+  OperationType,
+} from './firebase';
 
 const STORAGE_KEYS = {
   SESSION: 'mkm_session_fy2570_tab',
@@ -223,65 +233,60 @@ export default function App() {
   const [dbLastUpdated, setDbLastUpdated] = useState<string>('');
   const [dbLastUpdatedBy, setDbLastUpdatedBy] = useState<string>('');
 
-  // Fetch latest database from persistent server & Firebase Firestore
+  // Fetch latest database from persistent Firebase Firestore & server
   const fetchLatestServerDatabase = React.useCallback(async (force = false) => {
     try {
-      // 1. Fetch from persistent server store
-      const res = await fetch('/api/database');
-      if (res.ok) {
-        const result = await res.json();
-        if (result.success && result.data) {
-          // If forced or newer version, re-set states
-          if (force || !result.version || result.version > currentVersionRef.current || currentVersionRef.current === 0) {
-            currentVersionRef.current = result.version || Date.now();
-            if (result.lastUpdated) setDbLastUpdated(result.lastUpdated);
-            if (result.lastUpdatedBy) setDbLastUpdatedBy(result.lastUpdatedBy);
-            if (Array.isArray(result.data.eoffice)) setEOfficeData(result.data.eoffice);
-            if (Array.isArray(result.data.chkb)) setChkbData(result.data.chkb);
-            if (Array.isArray(result.data.gbt)) setGbtData(result.data.gbt);
-            if (Array.isArray(result.data.pensioners)) setPensionersData(result.data.pensioners);
-            if (Array.isArray(result.data.gratuity)) setGratuityData(result.data.gratuity);
-            if (Array.isArray(result.data.articles) && result.data.articles.length > 0) {
-              setArticlesData(result.data.articles);
-            }
-            setIsServerSynced(true);
-          }
-        }
-      }
-
-      // 2. Also query Firebase Firestore to ensure all collections are pulled and up-to-date
+      // 1. Fetch from Cloud Firestore (authoritative real-time cloud database across all devices)
       try {
         const fbData = await pullLatestFromFirestore();
         if (fbData) {
-          if (Array.isArray(fbData.eoffice) && fbData.eoffice.length > 0) setEOfficeData(fbData.eoffice);
-          if (Array.isArray(fbData.chkb) && fbData.chkb.length > 0) setChkbData(fbData.chkb);
-          if (Array.isArray(fbData.gbt) && fbData.gbt.length > 0) setGbtData(fbData.gbt);
-          if (Array.isArray(fbData.pensioners) && fbData.pensioners.length > 0) setPensionersData(fbData.pensioners);
-          if (Array.isArray(fbData.gratuity) && fbData.gratuity.length > 0) setGratuityData(fbData.gratuity);
-          if (Array.isArray(fbData.articles) && fbData.articles.length > 0) setArticlesData(fbData.articles);
+          if (fbData.metadata) {
+            if (fbData.metadata.version) currentVersionRef.current = fbData.metadata.version;
+            if (fbData.metadata.lastUpdated) setDbLastUpdated(fbData.metadata.lastUpdated);
+            if (fbData.metadata.lastUpdatedBy) setDbLastUpdatedBy(fbData.metadata.lastUpdatedBy);
+          }
+          if (Array.isArray(fbData.eoffice)) setEOfficeData(fbData.eoffice);
+          if (Array.isArray(fbData.chkb)) setChkbData(fbData.chkb);
+          if (Array.isArray(fbData.gbt)) setGbtData(fbData.gbt);
+          if (Array.isArray(fbData.pensioners)) setPensionersData(fbData.pensioners);
+          if (Array.isArray(fbData.gratuity)) setGratuityData(fbData.gratuity);
+          setIsServerSynced(true);
         }
       } catch (fbErr) {
         console.warn('[Firebase Firestore Pull Notice]', fbErr);
       }
-    } catch (err) {
-      console.warn('[Sync] Server fetch failed, running from cached storage:', err);
-    }
-  }, []);
 
-  // Sync entire collection to server & Firebase Firestore
-  const syncToServer = async (collectionName: string, data: any[]) => {
-    // 1. Sync to Firebase Firestore asynchronously
-    try {
-      if (Array.isArray(data)) {
-        for (const item of data) {
-          if (item && item.id) {
-            setDoc(doc(db, collectionName, String(item.id)), item).catch(() => {});
+      // 2. Also query local backend persistent store
+      const res = await fetch('/api/database');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          if (force || !result.version || result.version > currentVersionRef.current || currentVersionRef.current === 0) {
+            currentVersionRef.current = result.version || Date.now();
+            if (result.lastUpdated) setDbLastUpdated(result.lastUpdated);
+            if (result.lastUpdatedBy) setDbLastUpdatedBy(result.lastUpdatedBy);
+            if (Array.isArray(result.data.eoffice) && result.data.eoffice.length > 0) setEOfficeData(result.data.eoffice);
+            if (Array.isArray(result.data.chkb) && result.data.chkb.length > 0) setChkbData(result.data.chkb);
+            if (Array.isArray(result.data.gbt) && result.data.gbt.length > 0) setGbtData(result.data.gbt);
+            if (Array.isArray(result.data.pensioners) && result.data.pensioners.length > 0) setPensionersData(result.data.pensioners);
+            if (Array.isArray(result.data.gratuity) && result.data.gratuity.length > 0) setGratuityData(result.data.gratuity);
+            setIsServerSynced(true);
           }
         }
       }
-    } catch (fbErr) {
-      console.warn('[Firebase Firestore Sync Notice]', fbErr);
+    } catch (err) {
+      console.warn('[Sync] Server fetch notice:', err);
     }
+  }, []);
+
+  // Sync entire collection to Firebase Firestore & server store
+  const syncToServer = async (collectionName: string, data: any[]) => {
+    const updatedBy = currentSession?.username || 'User';
+
+    // 1. Sync directly to Firebase Firestore with stale document cleanup
+    syncCollectionToFirestore(collectionName, data, updatedBy).catch((fbErr) => {
+      console.warn('[Firebase Firestore Collection Sync Notice]', fbErr);
+    });
 
     // 2. Sync to local backend persistent store
     try {
@@ -291,7 +296,7 @@ export default function App() {
         body: JSON.stringify({
           collection: collectionName,
           data,
-          updatedBy: currentSession?.username || 'User',
+          updatedBy,
           clientId: clientIdRef.current,
         }),
       });
@@ -312,28 +317,18 @@ export default function App() {
     }
   };
 
-  // Sync single item atomically to server & Firebase Firestore (add, update, delete)
+  // Sync single item atomically to Firebase Firestore & server store (add, update, delete)
   const syncItemToServer = async (
     action: 'add' | 'update' | 'delete',
     collectionName: string,
     itemOrId: any
   ) => {
-    // 1. Sync to Firebase Firestore asynchronously
-    try {
-      if (action === 'delete') {
-        const docId = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
-        if (docId) {
-          deleteDoc(doc(db, collectionName, String(docId))).catch(() => {});
-        }
-      } else {
-        const docId = itemOrId?.id;
-        if (docId) {
-          setDoc(doc(db, collectionName, String(docId)), itemOrId).catch(() => {});
-        }
-      }
-    } catch (fbErr) {
+    const updatedBy = currentSession?.username || 'User';
+
+    // 1. Sync directly to Firebase Firestore atomically
+    syncItemToFirestore(action, collectionName, itemOrId, updatedBy).catch((fbErr) => {
       console.warn('[Firebase Firestore Item Sync Notice]', fbErr);
-    }
+    });
 
     // 2. Sync to local backend persistent store
     try {
@@ -341,7 +336,7 @@ export default function App() {
       let method = action === 'add' ? 'POST' : action === 'update' ? 'PUT' : 'DELETE';
       let body: any = {
         collection: collectionName,
-        updatedBy: currentSession?.username || 'User',
+        updatedBy,
         clientId: clientIdRef.current,
       };
       if (action === 'delete') {
@@ -355,7 +350,6 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
       if (res.ok) {
         const json = await res.json();
         if (json.version) currentVersionRef.current = json.version;
@@ -367,7 +361,7 @@ export default function App() {
         enqueuePendingSync(action, collectionName, itemOrId);
       }
     } catch (err) {
-      console.warn('[Sync] Item sync failed, enqueued for retry:', err);
+      console.warn('[Sync] Offline or server unreachable, item enqueued for sync:', err);
       setIsServerSynced(false);
       enqueuePendingSync(action, collectionName, itemOrId);
     }
@@ -448,53 +442,101 @@ export default function App() {
     // Direct Real-time Firestore onSnapshot Listeners across all devices
     const unsubs: (() => void)[] = [];
     try {
-      const uEOffice = onSnapshot(collection(db, 'eoffice'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as EOfficeRecord);
-          setEOfficeData(docs);
+      const uEOffice = onSnapshot(
+        collection(db, 'eoffice'),
+        (snap) => {
+          if (isMounted) {
+            const docs = snap.docs.map((d) => d.data() as EOfficeRecord);
+            docs.sort((a, b) => (b.updatedAt || b.date || '').localeCompare(a.updatedAt || a.date || ''));
+            setEOfficeData(docs);
+            setIsServerSynced(true);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'eoffice');
         }
-      }, () => {});
+      );
       unsubs.push(uEOffice);
 
-      const uChkb = onSnapshot(collection(db, 'chkb'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as FinancialFundRecord);
-          setChkbData(docs);
+      const uChkb = onSnapshot(
+        collection(db, 'chkb'),
+        (snap) => {
+          if (isMounted) {
+            const docs = snap.docs.map((d) => d.data() as FinancialFundRecord);
+            docs.sort((a, b) => (b.date || b.updatedAt || '').localeCompare(a.date || a.updatedAt || ''));
+            setChkbData(docs);
+            setIsServerSynced(true);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'chkb');
         }
-      }, () => {});
+      );
       unsubs.push(uChkb);
 
-      const uGbt = onSnapshot(collection(db, 'gbt'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as FinancialFundRecord);
-          setGbtData(docs);
+      const uGbt = onSnapshot(
+        collection(db, 'gbt'),
+        (snap) => {
+          if (isMounted) {
+            const docs = snap.docs.map((d) => d.data() as FinancialFundRecord);
+            docs.sort((a, b) => (b.date || b.updatedAt || '').localeCompare(a.date || a.updatedAt || ''));
+            setGbtData(docs);
+            setIsServerSynced(true);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'gbt');
         }
-      }, () => {});
+      );
       unsubs.push(uGbt);
 
-      const uPensioners = onSnapshot(collection(db, 'pensioners'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as PensionerRecord);
-          setPensionersData(docs);
+      const uPensioners = onSnapshot(
+        collection(db, 'pensioners'),
+        (snap) => {
+          if (isMounted) {
+            const docs = snap.docs.map((d) => d.data() as PensionerRecord);
+            docs.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+            setPensionersData(docs);
+            setIsServerSynced(true);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'pensioners');
         }
-      }, () => {});
+      );
       unsubs.push(uPensioners);
 
-      const uGratuity = onSnapshot(collection(db, 'gratuity'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as GratuityRecipientRecord);
-          setGratuityData(docs);
+      const uGratuity = onSnapshot(
+        collection(db, 'gratuity'),
+        (snap) => {
+          if (isMounted) {
+            const docs = snap.docs.map((d) => d.data() as GratuityRecipientRecord);
+            docs.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+            setGratuityData(docs);
+            setIsServerSynced(true);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'gratuity');
         }
-      }, () => {});
+      );
       unsubs.push(uGratuity);
 
-      const uArticles = onSnapshot(collection(db, 'articles'), (snap) => {
-        if (!snap.empty && isMounted) {
-          const docs = snap.docs.map((d) => d.data() as ArticleRecord);
-          setArticlesData(docs);
+      const uMeta = onSnapshot(
+        doc(db, 'system', 'metadata'),
+        (snap) => {
+          if (snap.exists() && isMounted) {
+            const meta = snap.data();
+            if (meta.lastUpdated) setDbLastUpdated(meta.lastUpdated);
+            if (meta.lastUpdatedBy) setDbLastUpdatedBy(meta.lastUpdatedBy);
+            if (meta.version) currentVersionRef.current = meta.version;
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'system/metadata');
         }
-      }, () => {});
-      unsubs.push(uArticles);
+      );
+      unsubs.push(uMeta);
     } catch (fbListenErr) {
       console.warn('[Firebase Firestore Listener Notice]', fbListenErr);
     }
@@ -903,6 +945,7 @@ export default function App() {
                   chkbData={chkbData}
                   gbtData={gbtData}
                   pensionersData={pensionersData}
+                  gratuityData={gratuityData}
                   onNavigateTab={setActiveTab}
                 />
               )}

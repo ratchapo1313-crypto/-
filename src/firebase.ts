@@ -3,6 +3,7 @@ import { getAuth, signInAnonymously } from 'firebase/auth';
 import {
   getFirestore,
   doc,
+  getDoc,
   getDocFromServer,
   collection,
   getDocs,
@@ -79,10 +80,127 @@ export function handleFirestoreError(
   return errInfo;
 }
 
-export { collection, doc, getDocs, setDoc, deleteDoc, onSnapshot };
+export { collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot };
 
 /**
- * Fetch all collections from Firestore
+ * Deeply clean object to remove undefined values so Firestore never rejects payloads
+ */
+export function sanitizeForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj
+      .map((item) => sanitizeForFirestore(item))
+      .filter((item) => item !== undefined);
+  }
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = sanitizeForFirestore(value);
+    }
+  }
+  return result;
+}
+
+/**
+ * Synchronize a single item (add, update, delete) to Firestore and update system metadata
+ */
+export async function syncItemToFirestore(
+  action: 'add' | 'update' | 'delete',
+  collectionName: string,
+  itemOrId: any,
+  updatedBy: string = 'User'
+): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const version = Date.now();
+
+    if (action === 'delete') {
+      const docId = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+      if (docId) {
+        await deleteDoc(doc(db, collectionName, String(docId)));
+      }
+    } else {
+      const docId = itemOrId?.id;
+      if (docId) {
+        const cleanPayload = sanitizeForFirestore(itemOrId);
+        await setDoc(doc(db, collectionName, String(docId)), cleanPayload);
+      }
+    }
+
+    // Update global system metadata in Firestore so all devices see the latest update
+    await setDoc(doc(db, 'system', 'metadata'), {
+      version,
+      lastUpdated: nowIso,
+      lastUpdatedBy: updatedBy,
+      collectionUpdated: collectionName,
+      action,
+    }, { merge: true });
+
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, collectionName);
+    return false;
+  }
+}
+
+/**
+ * Synchronize an entire collection to Firestore (e.g. after Excel import or batch updates)
+ * Safely removes stale items that were deleted and sets new/updated items
+ */
+export async function syncCollectionToFirestore(
+  collectionName: string,
+  items: any[],
+  updatedBy: string = 'User'
+): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const version = Date.now();
+
+    // 1. Fetch current document IDs in Firestore
+    const existingSnap = await getDocs(collection(db, collectionName));
+    const targetIds = new Set(items.map((i) => String(i.id)));
+
+    // 2. Delete any old documents in Firestore that are not in the new dataset
+    const deletePromises: Promise<any>[] = [];
+    existingSnap.docs.forEach((d) => {
+      if (!targetIds.has(d.id)) {
+        deletePromises.push(deleteDoc(doc(db, collectionName, d.id)));
+      }
+    });
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises);
+    }
+
+    // 3. Batch set all items with sanitized payload
+    const writePromises = items.map((item) => {
+      if (item && item.id) {
+        const cleanItem = sanitizeForFirestore(item);
+        return setDoc(doc(db, collectionName, String(item.id)), cleanItem);
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(writePromises);
+
+    // 4. Update system metadata
+    await setDoc(doc(db, 'system', 'metadata'), {
+      version,
+      lastUpdated: nowIso,
+      lastUpdatedBy: updatedBy,
+      collectionUpdated: collectionName,
+      action: 'sync_collection',
+      totalRecords: items.length,
+    }, { merge: true });
+
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, collectionName);
+    return false;
+  }
+}
+
+/**
+ * Fetch all collections and system metadata from Firestore
  */
 export async function pullLatestFromFirestore(): Promise<{
   eoffice: any[];
@@ -90,36 +208,52 @@ export async function pullLatestFromFirestore(): Promise<{
   gbt: any[];
   pensioners: any[];
   gratuity: any[];
-  articles: any[];
+  metadata: { version?: number; lastUpdated?: string; lastUpdatedBy?: string } | null;
 } | null> {
   try {
-    const [eSnap, cSnap, gSnap, pSnap, gratSnap, artSnap] = await Promise.all([
+    const [eSnap, cSnap, gSnap, pSnap, gratSnap, metaSnap] = await Promise.all([
       getDocs(collection(db, 'eoffice')),
       getDocs(collection(db, 'chkb')),
       getDocs(collection(db, 'gbt')),
       getDocs(collection(db, 'pensioners')),
       getDocs(collection(db, 'gratuity')),
-      getDocs(collection(db, 'articles')),
+      getDoc(doc(db, 'system', 'metadata')),
     ]);
 
-    const result = {
-      eoffice: eSnap.docs.map((d) => d.data()),
-      chkb: cSnap.docs.map((d) => d.data()),
-      gbt: gSnap.docs.map((d) => d.data()),
-      pensioners: pSnap.docs.map((d) => d.data()),
-      gratuity: gratSnap.docs.map((d) => d.data()),
-      articles: artSnap.docs.map((d) => d.data()),
+    const sortDesc = (arr: any[], dateField1: string, dateField2: string = 'createdAt') => {
+      return [...arr].sort((a, b) => {
+        const valA = a[dateField1] || a[dateField2] || '';
+        const valB = b[dateField1] || b[dateField2] || '';
+        return String(valB).localeCompare(String(valA));
+      });
     };
 
-    const hasData =
-      result.eoffice.length > 0 ||
-      result.chkb.length > 0 ||
-      result.gbt.length > 0 ||
-      result.pensioners.length > 0 ||
-      result.gratuity.length > 0 ||
-      result.articles.length > 0;
+    const eofficeDocs = sortDesc(eSnap.docs.map((d) => d.data()), 'updatedAt', 'date');
+    const chkbDocs = sortDesc(cSnap.docs.map((d) => d.data()), 'date', 'updatedAt');
+    const gbtDocs = sortDesc(gSnap.docs.map((d) => d.data()), 'date', 'updatedAt');
+    const pensionersDocs = sortDesc(pSnap.docs.map((d) => d.data()), 'updatedAt', 'id');
+    const gratuityDocs = sortDesc(gratSnap.docs.map((d) => d.data()), 'updatedAt', 'id');
+    const metadata = metaSnap.exists() ? (metaSnap.data() as any) : null;
 
-    return hasData ? result : null;
+    const hasAnyDocs =
+      eofficeDocs.length > 0 ||
+      chkbDocs.length > 0 ||
+      gbtDocs.length > 0 ||
+      pensionersDocs.length > 0 ||
+      gratuityDocs.length > 0;
+
+    if (!hasAnyDocs && !metadata) {
+      return null;
+    }
+
+    return {
+      eoffice: eofficeDocs,
+      chkb: chkbDocs,
+      gbt: gbtDocs,
+      pensioners: pensionersDocs,
+      gratuity: gratuityDocs,
+      metadata,
+    };
   } catch (err) {
     console.warn('[Firebase Firestore Pull]', err);
     return null;
