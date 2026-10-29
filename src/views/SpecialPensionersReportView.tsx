@@ -24,6 +24,7 @@ import {
 import { PensionerRecord, UserSession, HeirBeneficiary } from '../types';
 import { formatCurrency, formatNumber, formatThaiDate } from '../utils/formatters';
 import { exportSingleCategoryToExcel } from '../utils/excel';
+import { Pagination } from '../components/Pagination';
 
 interface SpecialPensionersReportViewProps {
   currentSession: UserSession;
@@ -48,6 +49,10 @@ export function SpecialPensionersReportView({
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = React.useDeferredValue(searchTerm);
   const [selectedAgeTier, setSelectedAgeTier] = useState<'all' | '60' | '65' | '70' | '75'>('all');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal State for Quick Edit/Add
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -180,6 +185,42 @@ export function SpecialPensionersReportView({
       })
       .filter((p) => matchesSearch(p, deferredSearchTerm));
   }, [livingPensioners, selectedAgeTier, deferredSearchTerm]);
+
+  // Reset pagination on tab or search/filter change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSubTab, deferredSearchTerm, selectedAgeTier]);
+
+  // Paginated slices for all 6 subtabs
+  const paginatedLivingPensioners = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLivingPensioners.slice(start, start + pageSize);
+  }, [filteredLivingPensioners, currentPage, pageSize]);
+
+  const paginatedLivingGratuityPensioners = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLivingGratuityPensioners.slice(start, start + pageSize);
+  }, [filteredLivingGratuityPensioners, currentPage, pageSize]);
+
+  const paginatedBonus25BudgetList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredBonus25BudgetList.slice(start, start + pageSize);
+  }, [filteredBonus25BudgetList, currentPage, pageSize]);
+
+  const paginatedBonus25DepositList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredBonus25DepositList.slice(start, start + pageSize);
+  }, [filteredBonus25DepositList, currentPage, pageSize]);
+
+  const paginatedDeceasedList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredDeceasedList.slice(start, start + pageSize);
+  }, [filteredDeceasedList, currentPage, pageSize]);
+
+  const paginatedAgeTierList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAgeTierList.slice(start, start + pageSize);
+  }, [filteredAgeTierList, currentPage, pageSize]);
 
   // Handle Delete with Confirmation (Non-blocking)
   const handleDelete = (item: PensionerRecord) => {
@@ -679,60 +720,74 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredLivingPensioners.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 text-center font-mono text-slate-500">
-                          {formatNumber(idx + 1)}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-900">
-                          {item.code}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>
-                            {item.title}
-                            {item.firstName} {item.lastName}
-                          </div>
-                          {item.recordedBy && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              ผู้บันทึก: {item.recordedBy}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-blue-900">
-                          {formatCurrency(item.regularPension)} ฿
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
-                            ปกติ
-                          </span>
-                        </td>
-                        {canEdit && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded"
-                                title="แก้ไขข้อมูล"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="ลบข้อมูล"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                    paginatedLivingPensioners.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-4 text-center font-mono text-slate-500">
+                            {formatNumber(itemIndex)}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-900">
+                            {item.code}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            <div>
+                              {item.title}
+                              {item.firstName} {item.lastName}
+                            </div>
+                            {item.recordedBy && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                ผู้บันทึก: {item.recordedBy}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-blue-900">
+                            {formatCurrency(item.regularPension)} ฿
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
+                              ปกติ
+                            </span>
+                          </td>
+                          {canEdit && (
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="p-1 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                                  title="แก้ไขข้อมูล"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="ลบข้อมูล"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {filteredLivingPensioners.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredLivingPensioners.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}
@@ -829,7 +884,8 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredLivingGratuityPensioners.map((item, idx) => {
+                    paginatedLivingGratuityPensioners.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
                       const inst1 =
                         item.livingGratuityInstallment1 !== undefined
                           ? item.livingGratuityInstallment1
@@ -852,7 +908,7 @@ export function SpecialPensionersReportView({
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/80">
                           <td className="py-3 px-3 text-center font-mono text-slate-500">
-                            {formatNumber(idx + 1)}
+                            {formatNumber(itemIndex)}
                           </td>
                           <td className="py-3 px-3 font-mono font-semibold text-blue-900">
                             {item.code}
@@ -941,6 +997,17 @@ export function SpecialPensionersReportView({
                 </tbody>
               </table>
             </div>
+
+            {filteredLivingGratuityPensioners.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredLivingGratuityPensioners.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1009,55 +1076,69 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredBonus25BudgetList.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 text-center font-mono text-slate-500">
-                          {formatNumber(idx + 1)}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-900">
-                          {item.code}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>
-                            {item.title}
-                            {item.firstName} {item.lastName}
-                          </div>
-                          {item.recordedBy && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              ผู้บันทึก: {item.recordedBy}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-indigo-900 bg-indigo-50/30">
-                          {formatCurrency(item.bonus25Budget)} ฿
-                        </td>
-                        {canEdit && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded"
-                                title="แก้ไขยอดเงิน"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="ลบข้อมูล"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                    paginatedBonus25BudgetList.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-4 text-center font-mono text-slate-500">
+                            {formatNumber(itemIndex)}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-900">
+                            {item.code}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            <div>
+                              {item.title}
+                              {item.firstName} {item.lastName}
+                            </div>
+                            {item.recordedBy && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                ผู้บันทึก: {item.recordedBy}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-indigo-900 bg-indigo-50/30">
+                            {formatCurrency(item.bonus25Budget)} ฿
+                          </td>
+                          {canEdit && (
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="p-1 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded"
+                                  title="แก้ไขยอดเงิน"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="ลบข้อมูล"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {filteredBonus25BudgetList.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredBonus25BudgetList.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1126,55 +1207,69 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredBonus25DepositList.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 text-center font-mono text-slate-500">
-                          {formatNumber(idx + 1)}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-900">
-                          {item.code}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>
-                            {item.title}
-                            {item.firstName} {item.lastName}
-                          </div>
-                          {item.recordedBy && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              ผู้บันทึก: {item.recordedBy}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-amber-900 bg-amber-50/30">
-                          {formatCurrency(item.bonus25Deposit)} ฿
-                        </td>
-                        {canEdit && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded"
-                                title="แก้ไขยอดเงิน"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="ลบข้อมูล"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                    paginatedBonus25DepositList.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-4 text-center font-mono text-slate-500">
+                            {formatNumber(itemIndex)}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-900">
+                            {item.code}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            <div>
+                              {item.title}
+                              {item.firstName} {item.lastName}
+                            </div>
+                            {item.recordedBy && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                ผู้บันทึก: {item.recordedBy}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-amber-900 bg-amber-50/30">
+                            {formatCurrency(item.bonus25Deposit)} ฿
+                          </td>
+                          {canEdit && (
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded"
+                                  title="แก้ไขยอดเงิน"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="ลบข้อมูล"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {filteredBonus25DepositList.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredBonus25DepositList.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1235,130 +1330,144 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredDeceasedList.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 text-center font-mono text-slate-500">
-                          {formatNumber(idx + 1)}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-900">
-                          {item.code}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>
-                            {item.title}
-                            {item.firstName} {item.lastName}
-                          </div>
-                          {item.recordedBy && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              ผู้บันทึก: {item.recordedBy}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 font-medium text-rose-900 whitespace-nowrap">
-                          {formatThaiDate(item.deathDate)}
-                        </td>
-                        <td className="py-3 px-4">
-                          {item.heirs && item.heirs.length > 0 ? (
-                            <div className="space-y-1">
-                              {item.heirs.map((h, hIdx) => (
-                                <div key={h.id || hIdx} className="font-semibold text-slate-800">
-                                  {h.name}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="font-semibold text-slate-800">
-                              {item.heirName || '-'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">
-                          {item.heirs && item.heirs.length > 0 ? (
-                            <div className="space-y-1">
-                              {item.heirs.map((h, hIdx) => (
-                                <div key={h.id || hIdx}>
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px]">
-                                    {h.relation || '-'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : item.heirRelation ? (
-                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px]">
-                              {item.heirRelation}
-                            </span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {item.heirs && item.heirs.length > 0 ? (
-                            <div className="space-y-1">
-                              {item.heirs.map((h, hIdx) => (
-                                <div key={h.id || hIdx}>
-                                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold font-mono text-[11px] border border-blue-200">
-                                    {h.percentage}%
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold font-mono text-[11px] border border-blue-200">
-                              {item.heirPercentage ?? 100}%
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-blue-800">
-                          {item.heirs && item.heirs.length > 0 ? (
-                            <div className="space-y-1">
-                              {item.heirs.map((h, hIdx) => (
-                                <div key={h.id || hIdx}>
-                                  {h.phone ? (
-                                    <span className="flex items-center gap-1">
-                                      <Phone className="w-3 h-3 text-slate-400" />
-                                      {h.phone}
-                                    </span>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : item.heirPhone ? (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              {item.heirPhone}
-                            </span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        {canEdit && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded"
-                                title="แก้ไขข้อมูลทายาท"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="ลบข้อมูล"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                    paginatedDeceasedList.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-4 text-center font-mono text-slate-500">
+                            {formatNumber(itemIndex)}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-900">
+                            {item.code}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            <div>
+                              {item.title}
+                              {item.firstName} {item.lastName}
+                            </div>
+                            {item.recordedBy && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                ผู้บันทึก: {item.recordedBy}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-rose-900 whitespace-nowrap">
+                            {formatThaiDate(item.deathDate)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {item.heirs && item.heirs.length > 0 ? (
+                              <div className="space-y-1">
+                                {item.heirs.map((h, hIdx) => (
+                                  <div key={h.id || hIdx} className="font-semibold text-slate-800">
+                                    {h.name}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="font-semibold text-slate-800">
+                                {item.heirName || '-'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">
+                            {item.heirs && item.heirs.length > 0 ? (
+                              <div className="space-y-1">
+                                {item.heirs.map((h, hIdx) => (
+                                  <div key={h.id || hIdx}>
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px]">
+                                      {h.relation || '-'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : item.heirRelation ? (
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px]">
+                                {item.heirRelation}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {item.heirs && item.heirs.length > 0 ? (
+                              <div className="space-y-1">
+                                {item.heirs.map((h, hIdx) => (
+                                  <div key={h.id || hIdx}>
+                                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold font-mono text-[11px] border border-blue-200">
+                                      {h.percentage}%
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold font-mono text-[11px] border border-blue-200">
+                                {item.heirPercentage ?? 100}%
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-blue-800">
+                            {item.heirs && item.heirs.length > 0 ? (
+                              <div className="space-y-1">
+                                {item.heirs.map((h, hIdx) => (
+                                  <div key={h.id || hIdx}>
+                                    {h.phone ? (
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="w-3 h-3 text-slate-400" />
+                                        {h.phone}
+                                      </span>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : item.heirPhone ? (
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-slate-400" />
+                                {item.heirPhone}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          {canEdit && (
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded"
+                                  title="แก้ไขข้อมูลทายาท"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="ลบข้อมูล"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {filteredDeceasedList.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredDeceasedList.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1547,81 +1656,95 @@ export function SpecialPensionersReportView({
                       </td>
                     </tr>
                   ) : (
-                    filteredAgeTierList.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-4 text-center font-mono text-slate-500">
-                          {formatNumber(idx + 1)}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-900">
-                          {item.code}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          <div>
-                            {item.title}
-                            {item.firstName} {item.lastName}
-                          </div>
-                          {item.recordedBy && (
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              ผู้บันทึก: {item.recordedBy}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">
-                          {formatNumber(item.age)} ปี
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {item.age === 60 || item.ageGroup === '60' ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                              อายุครบ 60 ปี
-                            </span>
-                          ) : item.age === 65 || item.ageGroup === '65' ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
-                              อายุครบ 65 ปี
-                            </span>
-                          ) : item.age === 70 || item.ageGroup === '70' ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">
-                              อายุครบ 70 ปี
-                            </span>
-                          ) : item.age === 75 || item.ageGroup === '75' ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
-                              อายุ 75 ปี
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px]">
-                              กลุ่มทั่วไป ({item.age} ปี)
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
-                        <td className="py-3 px-4 text-right font-mono font-medium">
-                          {formatCurrency(item.regularPension)} ฿
-                        </td>
-                        {canEdit && (
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded"
-                                title="แก้ไข"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
-                                title="ลบข้อมูล"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                    paginatedAgeTierList.map((item, idx) => {
+                      const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-4 text-center font-mono text-slate-500">
+                            {formatNumber(itemIndex)}
                           </td>
-                        )}
-                      </tr>
-                    ))
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-900">
+                            {item.code}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            <div>
+                              {item.title}
+                              {item.firstName} {item.lastName}
+                            </div>
+                            {item.recordedBy && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                ผู้บันทึก: {item.recordedBy}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono font-bold text-slate-800">
+                            {formatNumber(item.age)} ปี
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {item.age === 60 || item.ageGroup === '60' ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                                อายุครบ 60 ปี
+                              </span>
+                            ) : item.age === 65 || item.ageGroup === '65' ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px]">
+                                อายุครบ 65 ปี
+                              </span>
+                            ) : item.age === 70 || item.ageGroup === '70' ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">
+                                อายุครบ 70 ปี
+                              </span>
+                            ) : item.age === 75 || item.ageGroup === '75' ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                                อายุ 75 ปี
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px]">
+                                กลุ่มทั่วไป ({item.age} ปี)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
+                          <td className="py-3 px-4 text-right font-mono font-medium">
+                            {formatCurrency(item.regularPension)} ฿
+                          </td>
+                          {canEdit && (
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="p-1 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                                  title="แก้ไข"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                                  title="ลบข้อมูล"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {filteredAgeTierList.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredAgeTierList.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            )}
           </div>
         </div>
       )}

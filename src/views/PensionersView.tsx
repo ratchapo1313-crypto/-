@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { PensionerRecord, UserSession, HeirBeneficiary } from '../types';
 import { formatCurrency, formatNumber, formatThaiDate } from '../utils/formatters';
+import { Pagination } from '../components/Pagination';
 
 interface PensionersViewProps {
   currentSession: UserSession;
@@ -131,6 +132,21 @@ export function PensionersView({
       return matchSearch && matchFilter && matchRecorder;
     });
   }, [pensioners, deferredSearchTerm, filterVerification, filterRecorder]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to first page when filtering or searching
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchTerm, filterVerification, filterRecorder]);
+
+  // Paginated items
+  const paginatedList = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredList.slice(start, start + pageSize);
+  }, [filteredList, currentPage, pageSize]);
 
   const handleOpenAddModal = () => {
     setEditingId(null);
@@ -613,11 +629,13 @@ export function PensionersView({
                   </td>
                 </tr>
               ) : (
-                filteredList.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 text-center font-mono text-slate-500">
-                      {formatNumber(idx + 1)}
-                    </td>
+                paginatedList.map((item, idx) => {
+                  const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 text-center font-mono text-slate-500">
+                        {formatNumber(itemIndex)}
+                      </td>
                     <td className="py-3 px-4 font-mono font-semibold text-blue-900 whitespace-nowrap">
                       {item.code}
                     </td>
@@ -763,12 +781,25 @@ export function PensionersView({
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {/* Pagination bar with items per page selector */}
+      {filteredList.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredList.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+        />
+      )}
+    </div>
 
       {/* Quick Verify Modal */}
       {quickVerifyTarget && (

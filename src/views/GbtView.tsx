@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { FinancialFundRecord, UserSession } from '../types';
 import { formatCurrency, formatNumber, formatThaiDate } from '../utils/formatters';
+import { Pagination } from '../components/Pagination';
 
 interface GbtViewProps {
   currentSession: UserSession;
@@ -33,6 +34,8 @@ export function GbtView({
 
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = React.useDeferredValue(searchTerm);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FinancialFundRecord | null>(null);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<FinancialFundRecord | null>(null);
@@ -52,6 +55,15 @@ export function GbtView({
       );
     });
   }, [records, deferredSearchTerm]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchTerm]);
+
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, currentPage, pageSize]);
 
   const handleOpenAddModal = () => {
     setEditingRecord(null);
@@ -224,55 +236,58 @@ export function GbtView({
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 text-center font-mono text-slate-500">
-                      {formatNumber(idx + 1)}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap text-slate-700">
-                      {formatThaiDate(item.date)}
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-900">
-                      <div>{item.source}</div>
-                      {item.recordedBy && (
-                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                          ผู้บันทึก: {item.recordedBy}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-medium text-blue-700">
-                      {item.receivedAmount > 0 ? `+${formatCurrency(item.receivedAmount)}` : '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-medium text-rose-700">
-                      {item.paidAmount > 0 ? `-${formatCurrency(item.paidAmount)}` : '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-blue-950 bg-blue-50/30">
-                      {formatCurrency(item.netBalance)}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono">{formatNumber(item.beneficiaryCount)}</td>
-                    <td className="py-3 px-4 text-slate-500 italic">{item.note || '-'}</td>
-                    {canEdit && (
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleOpenEditModal(item)}
-                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="แก้ไข"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmTarget(item)}
-                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="ลบ"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                paginatedRecords.map((item, idx) => {
+                  const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 text-center font-mono text-slate-500">
+                        {formatNumber(itemIndex)}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td className="py-3 px-4 whitespace-nowrap text-slate-700">
+                        {formatThaiDate(item.date)}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-900">
+                        <div>{item.source}</div>
+                        {item.recordedBy && (
+                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            ผู้บันทึก: {item.recordedBy}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-medium text-blue-700">
+                        {item.receivedAmount > 0 ? `+${formatCurrency(item.receivedAmount)}` : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-medium text-rose-700">
+                        {item.paidAmount > 0 ? `-${formatCurrency(item.paidAmount)}` : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-blue-950 bg-blue-50/30">
+                        {formatCurrency(item.netBalance)}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono">{formatNumber(item.beneficiaryCount)}</td>
+                      <td className="py-3 px-4 text-slate-500 italic">{item.note || '-'}</td>
+                      {canEdit && (
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="แก้ไข"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmTarget(item)}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
             {filteredRecords.length > 0 && (
@@ -297,6 +312,17 @@ export function GbtView({
             )}
           </table>
         </div>
+
+        {filteredRecords.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        )}
       </div>
 
       {/* Add/Edit Modal (Isolated internal state for zero-latency 60fps typing) */}

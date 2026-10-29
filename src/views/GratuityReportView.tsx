@@ -21,6 +21,7 @@ import {
   Filter,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Pagination } from '../components/Pagination';
 import { GratuityRecipientRecord, UserSession } from '../types';
 import { formatCurrency, formatNumber, formatThaiDate } from '../utils/formatters';
 
@@ -48,6 +49,10 @@ export function GratuityReportView({
   const deferredSearchTerm = React.useDeferredValue(searchTerm);
   const [lifeFilter, setLifeFilter] = useState<'all' | 'alive' | 'deceased'>('all');
   const [verifyFilter, setVerifyFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -127,6 +132,17 @@ export function GratuityReportView({
       return matchSearch && matchLife && matchVerify;
     });
   }, [records, deferredSearchTerm, lifeFilter, verifyFilter]);
+
+  // Reset to first page when filtering or searching
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchTerm, lifeFilter, verifyFilter]);
+
+  // Slice paginated records for display
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, currentPage, pageSize]);
 
   // Handle Form Change with Auto Gratuity Calculation
   const handleInputChange = (field: keyof GratuityRecipientRecord, value: any) => {
@@ -638,14 +654,16 @@ export function GratuityReportView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredRecords.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-emerald-50/30 transition-colors duration-150"
-                  >
-                    <td className="py-3.5 px-4 text-center text-slate-400 font-mono">
-                      {index + 1}
-                    </td>
+                {paginatedRecords.map((item, index) => {
+                  const itemIndex = (currentPage - 1) * pageSize + index + 1;
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-emerald-50/30 transition-colors duration-150"
+                    >
+                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono">
+                        {itemIndex}
+                      </td>
 
                     {/* Name & Position */}
                     <td className="py-3.5 px-4">
@@ -791,11 +809,23 @@ export function GratuityReportView({
                         )}
                       </div>
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        )}
+
+        {filteredRecords.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         )}
       </div>
 
