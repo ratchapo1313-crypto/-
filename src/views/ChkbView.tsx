@@ -150,7 +150,6 @@ export function ChkbView({
           <div className="text-xl font-bold text-emerald-950">
             {formatCurrency(totalReceived)}
           </div>
-          <div className="text-[11px] text-emerald-600 mt-1">งบจัดสรรและเงินสมทบ</div>
         </div>
 
         {/* Total Paid */}
@@ -164,7 +163,6 @@ export function ChkbView({
           <div className="text-xl font-bold text-rose-950">
             {formatCurrency(totalPaid)}
           </div>
-          <div className="text-[11px] text-rose-600 mt-1">จ่ายให้ผู้รับเบี้ยหวัดบำนาญ</div>
         </div>
 
         {/* Net Balance (Calculated automatically) */}
@@ -178,7 +176,6 @@ export function ChkbView({
           <div className="text-xl font-bold text-blue-950">
             {formatCurrency(netBalance)}
           </div>
-          <div className="text-[11px] text-blue-600 mt-1">รับลบจ่าย สะสมคงเหลือ</div>
         </div>
 
         {/* Beneficiaries Count */}
