@@ -184,14 +184,14 @@ export function ChkbView({
         {/* Beneficiaries Count */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium">จำนวนครั้ง/ราย</span>
+            <span className="text-xs font-medium">จำนวนครั้ง/รายการ</span>
             <span className="p-2 rounded-xl bg-slate-50 text-slate-700">
               <Building className="w-4 h-4" />
             </span>
           </div>
           <div className="text-xl font-bold text-slate-900">
             {formatNumber(totalBeneficiaries)}{' '}
-            <span className="text-xs font-normal text-slate-500">ราย</span>
+            <span className="text-xs font-normal text-slate-500">รายการ</span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">ครอบคลุมผู้รับสิทธิทั้งปี</div>
         </div>
@@ -226,7 +226,7 @@ export function ChkbView({
                 <th className="py-3 px-4 w-36 text-right">รับเงินจำนวน (บาท)</th>
                 <th className="py-3 px-4 w-36 text-right">จ่ายไปเท่าไหร่ (บาท)</th>
                 <th className="py-3 px-4 w-36 text-right font-bold text-blue-900">คงเหลือสุทธิ (บาท)</th>
-                <th className="py-3 px-4 w-24 text-center">จำนวนราย</th>
+                <th className="py-3 px-4 w-24 text-center">จำนวนรายการ</th>
                 <th className="py-3 px-4 w-48">หมายเหตุ</th>
                 {canEdit && <th className="py-3 px-4 w-20 text-center">จัดการ</th>}
               </tr>
@@ -445,7 +445,7 @@ function ChkbRecordModal({ record, onClose, onSave }: ChkbRecordModalProps) {
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">จำนวนรายผู้รับสิทธิ</label>
+              <label className="block font-semibold text-slate-700 mb-1">จำนวนรายการ</label>
               <input
                 type="number"
                 min="1"
