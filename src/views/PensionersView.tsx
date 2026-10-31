@@ -25,6 +25,7 @@ import {
   PiggyBank,
   HeartHandshake,
   Calculator,
+  Calendar,
 } from 'lucide-react';
 import { PensionerRecord, UserSession, HeirBeneficiary } from '../types';
 import { formatCurrency, formatNumber, formatThaiDate } from '../utils/formatters';
@@ -39,6 +40,90 @@ interface PensionersViewProps {
   onQuickVerify: (id: string, channel: 'ยืนยันตัวตนออนไลน์' | 'แสดงตนที่กองคลัง') => void;
 }
 
+export interface ApproachingMilestoneInfo {
+  isApproaching: boolean;
+  targetAge: 60 | 65 | 70 | null;
+  label: string;
+  subText: string;
+  badgeColor: string;
+}
+
+export function checkApproachingMilestone(p: PensionerRecord): ApproachingMilestoneInfo {
+  if (!p.isAlive) {
+    return { isApproaching: false, targetAge: null, label: '', subText: '', badgeColor: '' };
+  }
+
+  const age = Number(p.age) || 0;
+
+  if (age === 59) {
+    return {
+      isApproaching: true,
+      targetAge: 60,
+      label: 'อายุใกล้ครบ 60 ปีแล้ว',
+      subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 1 (ไม่เกิน 200,000 บาท)',
+      badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-400/30',
+    };
+  }
+
+  if (age === 64) {
+    return {
+      isApproaching: true,
+      targetAge: 65,
+      label: 'อายุใกล้ครบ 65 ปีแล้ว',
+      subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 2 (เพิ่มอีกไม่เกิน 200,000 บาท)',
+      badgeColor: 'bg-blue-50 text-blue-800 border-blue-300 ring-1 ring-blue-400/30',
+    };
+  }
+
+  if (age === 69) {
+    return {
+      isApproaching: true,
+      targetAge: 70,
+      label: 'อายุใกล้ครบ 70 ปีแล้ว',
+      subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 3 (ส่วนที่เหลือรวมไม่เกิน 500,000 บาท)',
+      badgeColor: 'bg-purple-50 text-purple-800 border-purple-300 ring-1 ring-purple-400/30',
+    };
+  }
+
+  // Check if birthDate indicates turning 60, 65, or 70 in fiscal year 2570 (2027 AD)
+  if (p.birthDate) {
+    const bDate = new Date(p.birthDate);
+    if (!isNaN(bDate.getTime())) {
+      const bYear = bDate.getFullYear();
+      const age2570 = 2027 - bYear;
+      if (age2570 === 60 && age < 60) {
+        return {
+          isApproaching: true,
+          targetAge: 60,
+          label: 'อายุใกล้ครบ 60 ปีแล้ว',
+          subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 1 (ปี 2570)',
+          badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-400/30',
+        };
+      }
+      if (age2570 === 65 && age < 65) {
+        return {
+          isApproaching: true,
+          targetAge: 65,
+          label: 'อายุใกล้ครบ 65 ปีแล้ว',
+          subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 2 (ปี 2570)',
+          badgeColor: 'bg-blue-50 text-blue-800 border-blue-300 ring-1 ring-blue-400/30',
+        };
+      }
+      if (age2570 === 70 && age < 70) {
+        return {
+          isApproaching: true,
+          targetAge: 70,
+          label: 'อายุใกล้ครบ 70 ปีแล้ว',
+          subText: 'เตรียมสิทธิบำเหน็จดำรงชีพ งวดที่ 3 (ปี 2570)',
+          badgeColor: 'bg-purple-50 text-purple-800 border-purple-300 ring-1 ring-purple-400/30',
+        };
+      }
+    }
+  }
+
+  return { isApproaching: false, targetAge: null, label: '', subText: '', badgeColor: '' };
+}
+
 export function PensionersView({
   currentSession,
   pensioners,
@@ -51,7 +136,9 @@ export function PensionersView({
 
   const [searchTerm, setSearchTerm] = useState('');
   const deferredSearchTerm = React.useDeferredValue(searchTerm);
-  const [filterVerification, setFilterVerification] = useState<'all' | 'verified' | 'unverified' | 'deceased'>('all');
+  const [filterVerification, setFilterVerification] = useState<
+    'all' | 'verified' | 'unverified' | 'deceased' | 'approaching_milestone' | 'approaching_60' | 'approaching_65' | 'approaching_70'
+  >('all');
   const [filterRecorder, setFilterRecorder] = useState<string>('all');
 
   // Quick verify modal state
@@ -107,6 +194,24 @@ export function PensionersView({
   const unverifiedList = useMemo(() => livingPensioners.filter((p) => !p.isVerified), [livingPensioners]);
   const deceasedList = useMemo(() => pensioners.filter((p) => !p.isAlive), [pensioners]);
 
+  // Approaching Milestone Lists (อายุใกล้ครบ 60 ปี 65 ปี 70 ปี)
+  const approaching60List = useMemo(
+    () => livingPensioners.filter((p) => checkApproachingMilestone(p).targetAge === 60),
+    [livingPensioners]
+  );
+  const approaching65List = useMemo(
+    () => livingPensioners.filter((p) => checkApproachingMilestone(p).targetAge === 65),
+    [livingPensioners]
+  );
+  const approaching70List = useMemo(
+    () => livingPensioners.filter((p) => checkApproachingMilestone(p).targetAge === 70),
+    [livingPensioners]
+  );
+  const approachingAllList = useMemo(
+    () => livingPensioners.filter((p) => checkApproachingMilestone(p).isApproaching),
+    [livingPensioners]
+  );
+
   const filteredList = useMemo(() => {
     return pensioners.filter((p) => {
       const matchSearch =
@@ -123,6 +228,18 @@ export function PensionersView({
       if (filterVerification === 'verified') matchFilter = p.isAlive && p.isVerified;
       if (filterVerification === 'unverified') matchFilter = p.isAlive && !p.isVerified;
       if (filterVerification === 'deceased') matchFilter = !p.isAlive;
+      if (filterVerification === 'approaching_milestone') {
+        matchFilter = p.isAlive && checkApproachingMilestone(p).isApproaching;
+      }
+      if (filterVerification === 'approaching_60') {
+        matchFilter = p.isAlive && checkApproachingMilestone(p).targetAge === 60;
+      }
+      if (filterVerification === 'approaching_65') {
+        matchFilter = p.isAlive && checkApproachingMilestone(p).targetAge === 65;
+      }
+      if (filterVerification === 'approaching_70') {
+        matchFilter = p.isAlive && checkApproachingMilestone(p).targetAge === 70;
+      }
 
       let matchRecorder = true;
       if (filterRecorder !== 'all') {
@@ -428,8 +545,8 @@ export function PensionersView({
         )}
       </div>
 
-      {/* Overview Cards with Verification Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Overview Cards with Verification Status & Age Milestones */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Pensioners */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
@@ -487,6 +604,40 @@ export function PensionersView({
           </div>
         </div>
 
+        {/* Approaching Age Milestone Card (Alert) */}
+        <div
+          onClick={() =>
+            setFilterVerification(
+              filterVerification.startsWith('approaching') ? 'all' : 'approaching_milestone'
+            )
+          }
+          className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer shadow-2xs ${
+            filterVerification.startsWith('approaching')
+              ? 'border-indigo-400 ring-2 ring-indigo-200 bg-indigo-50/40'
+              : 'border-indigo-100 hover:border-indigo-300'
+          }`}
+          title="คลิกเพื่อกรองรายชื่อผู้รับบำนาญที่อายุใกล้ครบ 60, 65, 70 ปี"
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold text-indigo-950 flex items-center gap-1">
+              <Bell className="w-3.5 h-3.5 text-indigo-600 animate-bounce" />
+              อายุใกล้ครบ 60/65/70 ปี
+            </span>
+            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
+              <Calendar className="w-4 h-4" />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-indigo-950">
+            {formatNumber(approachingAllList.length)}{' '}
+            <span className="text-xs font-normal text-slate-500">คน</span>
+          </div>
+          <div className="text-[11px] text-indigo-700 font-medium mt-1 flex flex-wrap gap-1">
+            <span>60 ปี: <b>{approaching60List.length}</b></span>
+            <span>• 65 ปี: <b>{approaching65List.length}</b></span>
+            <span>• 70 ปี: <b>{approaching70List.length}</b></span>
+          </div>
+        </div>
+
         {/* Deceased Count */}
         <div className="bg-white rounded-2xl p-4 border border-rose-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
@@ -527,6 +678,71 @@ export function PensionersView({
           >
             กรองเฉพาะผู้ยังไม่ยืนยัน
           </button>
+        </div>
+      )}
+
+      {/* Approaching Milestone Alert Box */}
+      {approachingAllList.length > 0 && (
+        <div className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <Bell className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-xs font-bold text-indigo-950">
+                  แจ้งเตือนอายุใกล้ครบเกณฑ์: มีผู้รับบำนาญอายุใกล้ครบ 60, 65, 70 ปี รวม {formatNumber(approachingAllList.length)} ราย
+                </h4>
+                <span className="px-2 py-0.5 bg-indigo-200 text-indigo-900 rounded-full text-[10px] font-bold">
+                  แจ้งเตือนสิทธิบำเหน็จดำรงชีพ
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 self-end md:self-center shrink-0">
+            <button
+              onClick={() =>
+                setFilterVerification(filterVerification === 'approaching_60' ? 'all' : 'approaching_60')
+              }
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-lg cursor-pointer transition-colors ${
+                filterVerification === 'approaching_60'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50'
+              }`}
+            >
+              ใกล้ 60 ปี ({approaching60List.length})
+            </button>
+            <button
+              onClick={() =>
+                setFilterVerification(filterVerification === 'approaching_65' ? 'all' : 'approaching_65')
+              }
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-lg cursor-pointer transition-colors ${
+                filterVerification === 'approaching_65'
+                  ? 'bg-blue-700 text-white shadow-xs'
+                  : 'bg-white text-blue-800 border border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              ใกล้ 65 ปี ({approaching65List.length})
+            </button>
+            <button
+              onClick={() =>
+                setFilterVerification(filterVerification === 'approaching_70' ? 'all' : 'approaching_70')
+              }
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-lg cursor-pointer transition-colors ${
+                filterVerification === 'approaching_70'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-purple-800 border border-purple-200 hover:bg-purple-50'
+              }`}
+            >
+              ใกล้ 70 ปี ({approaching70List.length})
+            </button>
+            <button
+              onClick={() => setFilterVerification('approaching_milestone')}
+              className="px-3 py-1 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-xs"
+            >
+              ดูทั้งหมด ({approachingAllList.length})
+            </button>
+          </div>
         </div>
       )}
 
@@ -591,6 +807,22 @@ export function PensionersView({
             ยังไม่ได้ยืนยัน ({formatNumber(unverifiedList.length)})
           </button>
           <button
+            onClick={() =>
+              setFilterVerification(
+                filterVerification === 'approaching_milestone' ? 'all' : 'approaching_milestone'
+              )
+            }
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer flex items-center gap-1.5 ${
+              filterVerification.startsWith('approaching')
+                ? 'bg-indigo-700 text-white shadow-xs'
+                : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+            }`}
+            title="แสดงผู้ที่อายุใกล้ครบ 60, 65, 70 ปี เพื่อแจ้งเตือนสิทธิบำเหน็จดำรงชีพ"
+          >
+            <Bell className="w-3 h-3 text-indigo-500" />
+            อายุใกล้ครบแล้ว ({formatNumber(approachingAllList.length)})
+          </button>
+          <button
             onClick={() => setFilterVerification('deceased')}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer ${
               filterVerification === 'deceased'
@@ -614,7 +846,7 @@ export function PensionersView({
                 <th className="py-3 px-4">ชื่อ - นามสกุล</th>
                 <th className="py-3 px-4 w-32 font-mono">เลขบัตรประชาชน</th>
                 <th className="py-3 px-4">ตำแหน่งเดิม</th>
-                <th className="py-3 px-4 w-20 text-center">อายุ</th>
+                <th className="py-3 px-4 w-44 text-center">อายุ / แจ้งเตือนสิทธิ</th>
                 <th className="py-3 px-4 w-44 text-center">สถานะการยืนยันตัวตน</th>
                 <th className="py-3 px-4 w-48">ทายาทผู้มีสิทธิรับบำเหน็จตกทอด</th>
                 <th className="py-3 px-4 w-32 text-right">เงินบำนาญปกติ</th>
@@ -658,8 +890,31 @@ export function PensionersView({
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-600">{item.idCard}</td>
                     <td className="py-3 px-4 text-slate-600">{item.formerPosition}</td>
-                    <td className="py-3 px-4 text-center font-mono font-medium">
-                      {formatNumber(item.age)} ปี
+                    <td className="py-3 px-4 text-center">
+                      <div className="font-mono font-bold text-slate-800">
+                        {formatNumber(item.age)} ปี
+                      </div>
+                      {item.isAlive && (() => {
+                        const milestone = checkApproachingMilestone(item);
+                        if (!milestone.isApproaching) return null;
+                        return (
+                          <div className="mt-1 flex flex-col items-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border shadow-2xs ${milestone.badgeColor}`}
+                              title={milestone.subText}
+                            >
+                              <Bell className="w-2.5 h-2.5 shrink-0 animate-bounce" />
+                              {milestone.label}
+                            </span>
+                            <span
+                              className="text-[9px] text-slate-500 mt-0.5 max-w-[130px] truncate"
+                              title={milestone.subText}
+                            >
+                              {milestone.subText}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {!item.isAlive ? (
@@ -1082,6 +1337,35 @@ export function PensionersView({
                   </select>
                 </div>
               </div>
+
+              {/* Approaching Milestone Modal Alert */}
+              {(() => {
+                const temp: PensionerRecord = {
+                  ...(formData as any),
+                  age: Number(formData.age) || 0,
+                  isAlive: formData.isAlive ?? true,
+                };
+                const ms = checkApproachingMilestone(temp);
+                if (!ms.isApproaching) return null;
+                return (
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center gap-2.5 text-xs text-indigo-950">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                      <Bell className="w-4 h-4 animate-bounce" />
+                    </div>
+                    <div>
+                      <div className="font-bold flex items-center gap-1.5 text-indigo-900">
+                        <span>แจ้งเตือนอายุใกล้ครบเกณฑ์:</span>
+                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-semibold text-[11px]">
+                          {ms.label}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-700 mt-0.5">
+                        {ms.subText}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">ตำแหน่งเดิมก่อนเกษียณ</label>
